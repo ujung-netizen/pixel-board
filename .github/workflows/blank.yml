@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>픽셀 보드 메이커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --panel: #ffffff;
+    --line: #e6eaf2;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --blue: #1c6fe0;
+    --blue-soft: #e8f0fd;
+    --red-soft: #fdecec;
+    --red: #d6336c;
+    --chip: #eef1f7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: "Noto Sans KR", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text);
+    background: linear-gradient(180deg, #fbfcff 0%, var(--bg) 100%);
+    min-height: 100vh;
+  }
+  header { text-align: center; padding: 28px 16px 18px; }
+  header h1 { margin: 0 0 8px; font-size: 30px; font-weight: 800; letter-spacing: -0.5px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .app {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    align-items: start;
+  }
+  .side {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 18px 20px;
+    box-shadow: 0 2px 10px rgba(30, 50, 90, .04);
+  }
+  .section { padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .section:first-child { padding-top: 4px; }
+  .section:last-child { border-bottom: 0; padding-bottom: 4px; }
+  .section h2 { margin: 0 0 12px; font-size: 15px; font-weight: 700; }
+  .help { margin: 10px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+
+  /* size slider */
+  .size-row { display: flex; align-items: center; gap: 12px; }
+  .size-row input[type=range] { flex: 1; accent-color: var(--blue); }
+  .size-val { font-weight: 800; color: var(--blue); min-width: 24px; text-align: right; }
+
+  /* color */
+  .color-row { display: flex; gap: 10px; align-items: center; }
+  .current-color {
+    width: 46px; height: 36px; border-radius: 8px; border: 1px solid var(--line);
+    padding: 0; cursor: pointer; background: none; overflow: hidden;
+  }
+  .current-color::-webkit-color-swatch-wrapper { padding: 0; }
+  .current-color::-webkit-color-swatch { border: 0; border-radius: 7px; }
+  .current-color::-moz-color-swatch { border: 0; border-radius: 7px; }
+  .btn {
+    font: inherit; font-size: 13px; font-weight: 700; border: 0; cursor: pointer;
+    padding: 9px 14px; border-radius: 10px; background: var(--chip); color: #243044;
+    transition: filter .12s, transform .05s;
+  }
+  .btn:hover { filter: brightness(.96); }
+  .btn:active { transform: translateY(1px); }
+  .btn.blue { background: var(--blue); color: #fff; }
+  .btn.red { background: var(--red-soft); color: #c92a2a; }
+  .btn.tool.on { background: var(--blue-soft); color: var(--blue); box-shadow: inset 0 0 0 2px var(--blue); }
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .sw {
+    width: 24px; height: 24px; border-radius: 8px; cursor: pointer; padding: 0;
+    border: 1px solid rgba(0,0,0,.12); outline: none; position: relative;
+  }
+  .sw.sel { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--blue); }
+  .sw:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #7aa7ee; }
+  .tools { display: flex; gap: 8px; }
+
+  /* stage */
+  .stage {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 2px 10px rgba(30, 50, 90, .04);
+  }
+  .status { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip {
+    background: var(--chip); border-radius: 10px; padding: 8px 12px;
+    font-size: 12.5px; color: #3b4658; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .chip i { width: 12px; height: 12px; border-radius: 4px; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
+  .board-wrap {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background-color: #f9fbfe;
+    background-image: radial-gradient(#cfd6e4 1px, transparent 1.2px);
+    background-size: 16px 16px;
+    padding: 28px 16px;
+    display: flex; justify-content: center;
+  }
+  #board {
+    width: 100%; max-width: 560px; aspect-ratio: 1 / 1;
+    background: #fff; display: block;
+    box-shadow: 0 4px 16px rgba(30, 50, 90, .18);
+    border: 1px solid #d6dde9;
+    touch-action: none; cursor: crosshair; image-rendering: pixelated;
+  }
+  #board.erasing { cursor: cell; }
+
+  /* toast + modal */
+  #toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 20px);
+    background: #1f2937; color: #fff; padding: 10px 16px; border-radius: 10px;
+    font-size: 13px; opacity: 0; pointer-events: none; transition: .25s; z-index: 20;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(20, 30, 50, .45);
+    display: none; align-items: center; justify-content: center; z-index: 30; padding: 20px;
+  }
+  .modal-bg.show { display: flex; }
+  .modal { background: #fff; border-radius: 16px; padding: 22px; width: 100%; max-width: 340px; box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+  .modal p { margin: 0 0 18px; font-size: 14.5px; line-height: 1.6; }
+  .modal .row { display: flex; gap: 8px; justify-content: flex-end; }
+
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; }
+    header h1 { font-size: 24px; }
+    .board-wrap { padding: 16px 8px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>픽셀 보드 메이커</h1>
+  <p>이미지 없이 원하는 색을 직접 찍어 나만의 픽셀아트 도안을 만들어 보세요.</p>
+</header>
+
+<main class="app">
+  <aside class="side">
+    <section class="section">
+      <h2>보드 크기</h2>
+      <div class="size-row">
+        <input id="size" type="range" min="5" max="40" value="20" aria-label="보드 크기">
+        <span id="sizeVal" class="size-val">20</span>
+      </div>
+      <p class="help">숫자가 클수록 더 촘촘한 도안이 됩니다. 크기를 바꾸면 기존 그림은 초기화됩니다.</p>
+    </section>
+
+    <section class="section">
+      <h2>색상 선택</h2>
+      <div class="color-row">
+        <input id="picker" class="current-color" type="color" value="#51cf66" aria-label="색상 선택">
+        <button id="addColor" class="btn">팔레트에 추가</button>
+      </div>
+      <div id="swatches" class="swatches"></div>
+      <p class="help">팔레트 색을 누른 뒤, 보드 칸을 클릭하거나 드래그해서 색칠합니다.</p>
+    </section>
+
+    <section class="section">
+      <h2>도구</h2>
+      <div class="tools">
+        <button id="eraser" class="btn tool">지우개</button>
+        <button id="clear" class="btn red">전체 지우기</button>
+      </div>
+      <p class="help">마우스 오른쪽 버튼을 누른 채 드래그해서 연속해서 지울 수 있습니다. (Ctrl+Z: 되돌리기)</p>
+    </section>
+
+    <section class="section">
+      <h2>저장</h2>
+      <button id="save" class="btn blue">PNG로 저장</button>
+      <p class="help">완성한 픽셀 도안을 이미지로 저장해 디즈니블럭·비즈·픽셀아트 활동에 활용할 수 있습니다.</p>
+    </section>
+  </aside>
+
+  <section class="stage">
+    <div class="status">
+      <span class="chip" id="statusColor"><i></i><span></span></span>
+      <span class="chip">클릭: 칠하기 · 드래그: 연속 칠하기</span>
+    </div>
+    <div class="board-wrap">
+      <canvas id="board"></canvas>
+    </div>
+  </section>
+</main>
+
+<div id="toast"></div>
+<div id="modalBg" class="modal-bg">
+  <div class="modal">
+    <p id="modalMsg"></p>
+    <div class="row">
+      <button id="modalNo" class="btn">취소</button>
+      <button id="modalYes" class="btn blue">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var DEFAULT_PALETTE = ['#ff4d4d', '#ffd43b', '#51cf66', '#339af0', '#845ef7', '#f783ac', '#ffffff', '#212529'];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var canvas = $('board'), ctx = canvas.getContext('2d');
+  var sizeInput = $('size'), sizeVal = $('sizeVal');
+  var picker = $('picker'), swatchBox = $('swatches');
+
+  var state = {
+    size: 20,
+    grid: [],
+    color: '#51cf66',
+    erasing: false,
+    palette: DEFAULT_PALETTE.slice()
+  };
+  var undoStack = [];
+
+  function emptyGrid(n) { return new Array(n * n).fill(null); }
+  function isEmpty() { return state.grid.every(function (c) { return c === null; }); }
+
+  /* ---------- rendering ---------- */
+  var CELL = 24; // internal px per cell (re-computed on resize)
+  function resizeCanvas() {
+    CELL = Math.max(10, Math.floor(720 / state.size));
+    canvas.width = canvas.height = state.size * CELL;
+  }
+  function draw() {
+    var n = state.size, W = n * CELL;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, W);
+    for (var y = 0; y < n; y++) {
+      for (var x = 0; x < n; x++) {
+        var c = state.grid[y * n + x];
+        if (c) { ctx.fillStyle = c; ctx.fillRect(x * CELL, y * CELL, CELL, CELL); }
+      }
+    }
+    ctx.strokeStyle = '#e1e7f0';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (var i = 1; i < n; i++) {
+      var p = i * CELL + 0.5;
+      ctx.moveTo(p, 0); ctx.lineTo(p, W);
+      ctx.moveTo(0, p); ctx.lineTo(W, p);
+    }
+    ctx.stroke();
+  }
+
+  /* ---------- palette / UI ---------- */
+  function renderSwatches() {
+    swatchBox.innerHTML = '';
+    state.palette.forEach(function (c) {
+      var b = document.createElement('button');
+      b.className = 'sw' + (!state.erasing && c === state.color ? ' sel' : '');
+      b.style.background = c;
+      b.title = c.toUpperCase();
+      b.setAttribute('aria-label', c.toUpperCase());
+      b.addEventListener('click', function () { setColor(c); });
+      swatchBox.appendChild(b);
+    });
+  }
+  function updateStatus() {
+    var chip = $('statusColor');
+    if (state.erasing) {
+      chip.querySelector('i').style.background = 'repeating-conic-gradient(#ddd 0 25%, #fff 0 50%) 50% / 8px 8px';
+      chip.querySelector('span').textContent = '지우개가 선택되었습니다.';
+    } else {
+      chip.querySelector('i').style.background = state.color;
+      chip.querySelector('span').textContent = state.color.toUpperCase() + ' 색이 선택되었습니다.';
+    }
+    $('eraser').classList.toggle('on', state.erasing);
+    canvas.classList.toggle('erasing', state.erasing);
+  }
+  function setColor(c) {
+    state.color = c.toLowerCase();
+    state.erasing = false;
+    picker.value = state.color;
+    renderSwatches(); updateStatus();
+  }
+  picker.addEventListener('input', function () { setColor(picker.value); });
+  $('addColor').addEventListener('click', function () {
+    var c = picker.value.toLowerCase();
+    if (state.palette.indexOf(c) === -1) {
+      state.palette.push(c);
+      toast(c.toUpperCase() + ' 색을 팔레트에 추가했어요.');
+    } else {
+      toast('이미 팔레트에 있는 색이에요.');
+    }
+    setColor(c);
+  });
+  $('eraser').addEventListener('click', function () {
+    state.erasing = !state.erasing;
+    renderSwatches(); updateStatus();
+  });
+
+  /* ---------- toast / modal ---------- */
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+  function ask(msg) {
+    return new Promise(function (resolve) {
+      var bg = $('modalBg');
+      $('modalMsg').textContent = msg;
+      bg.classList.add('show');
+      function done(v) {
+        bg.classList.remove('show');
+        $('modalYes').onclick = $('modalNo').onclick = null;
+        resolve(v);
+      }
+      $('modalYes').onclick = function () { done(true); };
+      $('modalNo').onclick = function () { done(false); };
+      $('modalYes').focus();
+    });
+  }
+
+  /* ---------- board actions ---------- */
+  function pushUndo() {
+    undoStack.push(state.grid.slice());
+    if (undoStack.length > 100) undoStack.shift();
+  }
+  function undo() {
+    if (!undoStack.length) return;
+    state.grid = undoStack.pop();
+    draw();
+  }
+  function newBoard(n) {
+    state.size = n; state.grid = emptyGrid(n); undoStack = [];
+    sizeInput.value = n; sizeVal.textContent = n;
+    resizeCanvas(); draw();
+  }
+
+  sizeInput.addEventListener('input', function () { sizeVal.textContent = sizeInput.value; });
+  sizeInput.addEventListener('change', async function () {
+    var n = parseInt(sizeInput.value, 10);
+    if (n === state.size) return;
+    if (!isEmpty()) {
+      var ok = await ask('보드 크기를 바꾸면 지금 그림이 초기화됩니다. 계속할까요?');
+      if (!ok) { sizeInput.value = state.size; sizeVal.textContent = state.size; return; }
+    }
+    newBoard(n);
+  });
+  $('clear').addEventListener('click', async function () {
+    if (isEmpty()) { toast('이미 비어 있어요.'); return; }
+    var ok = await ask('보드의 모든 칸을 지울까요?');
+    if (!ok) return;
+    pushUndo();
+    state.grid = emptyGrid(state.size);
+    draw();
+  });
+
+  /* ---------- pointer painting ---------- */
+  var drawing = false, mode = 'paint', last = null, changed = false;
+
+  function cellAt(e) {
+    var r = canvas.getBoundingClientRect();
+    var x = Math.floor((e.clientX - r.left) / r.width * state.size);
+    var y = Math.floor((e.clientY - r.top) / r.height * state.size);
+    if (x < 0 || y < 0 || x >= state.size || y >= state.size) return null;
+    return { x: x, y: y };
+  }
+  function setCell(x, y) {
+    var i = y * state.size + x;
+    var v = mode === 'erase' ? null : state.color;
+    if (state.grid[i] !== v) { state.grid[i] = v; changed = true; }
+  }
+  function line(a, b) { // Bresenham, so fast drags leave no gaps
+    var x0 = a.x, y0 = a.y, x1 = b.x, y1 = b.y;
+    var dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0);
+    var sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy;
+    for (;;) {
+      setCell(x0, y0);
+      if (x0 === x1 && y0 === y1) break;
+      var e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+  }
+  canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  canvas.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 2) return;
+    e.preventDefault();
+    var c = cellAt(e); if (!c) return;
+    mode = (e.button === 2 || state.erasing) ? 'erase' : 'paint';
+    drawing = true; changed = false;
+    undoStack.push(state.grid.slice());
+    canvas.setPointerCapture(e.pointerId);
+    last = c; setCell(c.x, c.y); draw();
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!drawing) return;
+    var c = cellAt(e); if (!c) return;
+    if (last && last.x === c.x && last.y === c.y) return;
+    line(last || c, c); last = c; draw();
+  });
+  function end() {
+    if (!drawing) return;
+    drawing = false; last = null;
+    if (!changed) undoStack.pop();
+  }
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+  });
+
+  /* ---------- PNG export ---------- */
+  function exportCanvas() {
+    var n = state.size, px = Math.max(16, Math.floor(1000 / n));
+    var c = document.createElement('canvas');
+    c.width = c.height = n * px;
+    var g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    for (var y = 0; y < n; y++) for (var x = 0; x < n; x++) {
+      var col = state.grid[y * n + x];
+      if (col) { g.fillStyle = col; g.fillRect(x * px, y * px, px, px); }
+    }
+    g.strokeStyle = '#d9dfea'; g.lineWidth = 1; g.beginPath();
+    for (var i = 0; i <= n; i++) {
+      var p = Math.min(i * px, c.width - 1) + 0.5;
+      g.moveTo(p, 0); g.lineTo(p, c.height); g.moveTo(0, p); g.lineTo(c.width, p);
+    }
+    g.stroke();
+    return c;
+  }
+  function toBlob(c) { return new Promise(function (res) { c.toBlob(res, 'image/png'); }); }
+
+  $('save').addEventListener('click', async function () {
+    if (isEmpty()) { toast('먼저 그림을 그려 주세요.'); return; }
+    var blob = await toBlob(exportCanvas());
+    var name = 'pixel-board-' + state.size + 'x' + state.size + '.png';
+    var dl = null;
+    try { dl = window.claude && await window.claude.use('downloads'); } catch (_) { dl = null; }
+    try {
+      if (dl) {
+        await dl.save({ filename: name, data: blob });
+        toast('PNG 이미지를 저장했어요.');
+      } else {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        toast('PNG 이미지를 저장했어요.');
+      }
+    } catch (err) {
+      if (err && err.code === 'declined') return;
+      toast('저장하지 못했어요. 다시 시도해 주세요.');
+    }
+  });
+
+  /* ---------- init ---------- */
+  setColor(state.color);
+  newBoard(20);
+})();
+</script>
+</body>
+</html>
